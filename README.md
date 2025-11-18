@@ -13,16 +13,16 @@
 ├─ docs/
 │  ├─ rtmri_pipeline_notes.md        # 逐次作業メモ（PowerShell 例付き）
 │  └─ thesis_model_settings.md       # 学習ハイパーパラメータ一覧
-├─ scripts/
-│  ├─ mask_rtmri_video.py            # 唇/舌マスキング用
-│  ├─ run_mri_video_inference.py     # rtMRI → mel → HiFi-GAN 音声
-│  ├─ export_predicted_mels.py       # HiFi-GAN 微調整用メル書き出し
-│  └─ mri_gradcam_formant.py         # F1/F2 向け Grad-CAM
-├─ checkpoints/                      # 学習済みモデルを配置
-├─ dataset/                          # 前処理済み npy / scaler.json など
+├─ mri2speech_code/                  # rtMRI→mel 学習・前処理コード
+├─ scripts/                          # 推論・可視化など補助ツール
+├─ config_custom.json                # HiFi-GAN 設定
+├─ env.py / inference*.py / train.py # 実験用エントリポイント
+├─ meldataset.py / models.py / utils.py ...
 ├─ requirements.txt                  # 旧環境用依存
 └─ requirements.lab.txt              # 研究室現行環境（PyTorch 2.7, OpenCV など）
 ```
+
+※ `dataset/` や `checkpoints/` などのディレクトリは Git 追跡対象外です。各自の環境で必要に応じて作成し、`.gitignore` で除外したまま運用してください。
 
 rtMRI→mel の学習コード本体 (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) は、このリポジトリ直下の `mri2speech_code/` ディレクトリに格納しています。スクリプトに `--mri-code-dir` を渡さない場合は `./mri2speech_code` が既定で読み込まれます。
 
