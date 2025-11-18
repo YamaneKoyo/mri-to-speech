@@ -1,51 +1,44 @@
-# MRI-to-Audio HiFi-GAN Research Pipeline
+# MRI-to-Audio HiFi-GAN 研究パイプライン
 
-This repository hosts the scripts we used in the laboratory project *“rtMRI を用いた日本語母音音声合成と調音器官解析”*.  
-It extends the original HiFi-GAN implementation with:
+このリポジトリは、研究室内プロジェクト「rtMRI を用いた日本語母音音声合成と調音器官解析」で使用しているスクリプト一式をまとめたものです。HiFi-GAN をベースに、rtMRI 動画からメルスペクトログラムを推定する CNN-BiLSTM、推論・可視化・マスキングのための補助ツール、再現手順付きドキュメントを収録しています。
 
-- A CNN-BiLSTM acoustic model that predicts mel features directly from rtMRI videos (`mri2speech_code`).
-- Utilities for data preprocessing, inference, articulator masking, and Grad-CAM based visualization.
-- Documentation so that lab members can reproduce the full pipeline after cloning from GitHub.
-
-**Important:** rtMRI videos / aligned audio / MRI checkpoints are **not** distributed here.  
-Only scripts and configs are versioned; you must supply your own data that matches the directory structure described below.
+**注意:** rtMRI 動画・整列済み音声・学習済みチェックポイントなどのデータは含まれていません。以下で示すディレクトリ構成に沿って、各自で取得したデータを配置してください。
 
 ---
 
-## Repository Layout
+## リポジトリ構成
 
 ```
 .
 ├─ docs/
-│  ├─ rtmri_pipeline_notes.md        # step-by-step runbook
-│  └─ thesis_model_settings.md       # hyper-parameter reference
+│  ├─ rtmri_pipeline_notes.md        # 逐次作業メモ（PowerShell 例付き）
+│  └─ thesis_model_settings.md       # 学習ハイパーパラメータ一覧
 ├─ scripts/
-│  ├─ mask_rtmri_video.py            # lip / tongue masking helper
-│  ├─ run_mri_video_inference.py     # rtMRI → mel → HiFi-GAN audio
-│  ├─ export_predicted_mels.py       # dumps mel features for HiFi-GAN fine-tuning
-│  └─ mri_gradcam_formant.py         # Grad-CAM visualizer for F1/F2 bands
-├─ checkpoints/                      # place acoustic + HiFi-GAN checkpoints here
-├─ dataset/                          # preprocessed npy, scaler.json, filelists, etc.
-├─ requirements.txt                  # legacy HiFi-GAN deps
-└─ requirements.lab.txt              # current lab environment (PyTorch 2.7, OpenCV, timm, ...)
+│  ├─ mask_rtmri_video.py            # 唇/舌マスキング用
+│  ├─ run_mri_video_inference.py     # rtMRI → mel → HiFi-GAN 音声
+│  ├─ export_predicted_mels.py       # HiFi-GAN 微調整用メル書き出し
+│  └─ mri_gradcam_formant.py         # F1/F2 向け Grad-CAM
+├─ checkpoints/                      # 学習済みモデルを配置
+├─ dataset/                          # 前処理済み npy / scaler.json など
+├─ requirements.txt                  # 旧環境用依存
+└─ requirements.lab.txt              # 研究室現行環境（PyTorch 2.7, OpenCV など）
 ```
 
-The acoustic model code (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) lives in a **separate** repository (`mri2speech_code`).  
-Keep it as a sibling folder or pass `--mri-code-dir` whenever a script needs it.
+rtMRI→mel の学習コード本体 (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) は別リポジトリ `mri2speech_code` にあります。隣接フォルダにクローンするか、各スクリプトへ `--mri-code-dir` を渡してください。
 
 ---
 
-## Environment Setup
+## 環境構築
 
-1. Install Python 3.10+ (we validated on **Python 3.13.3**).
-2. Clone this repository and (optionally) clone `mri2speech_code` next to it.
-3. Install Python packages:
+1. Python 3.10 以上（研究室では **Python 3.13.3** で検証）。
+2. 本リポジトリをクローンし、必要なら `mri2speech_code` も同階層へ配置。
+3. 依存パッケージをインストール:
 
    ```bash
    python -m pip install -r requirements.lab.txt
    ```
 
-   Tested versions:
+   検証済みバージョン例:
 
    | Package           | Version   |
    |-------------------|-----------|
@@ -64,25 +57,25 @@ Keep it as a sibling folder or pass `--mri-code-dir` whenever a script needs it.
    | pdfminer.six      | 20250506 |
    | pypdf             | 6.1.3 |
 
-   Feel free to install GPU builds of PyTorch if hardware is available.
+   GPU マシンでは PyTorch の CUDA 版に置き換えても問題ありません。
 
 ---
 
-## End-to-End Workflow
+## パイプライン全体像
 
-### 1. Prepare raw data
+### 1. 元データの配置
 
 ```
 <raw_root>/
-├─ normalized_videos/   # rtMRI mp4 files (256x256 grayscale, normalized)
-└─ audio_wav/           # aligned speech at 11,413 Hz
+├─ normalized_videos/   # 256x256 グレースケールで正規化済み rtMRI mp4
+└─ audio_wav/           # 11,413 Hz に整列させた発話 wav
 ```
 
-Statistical masks or metadata live elsewhere and are not stored in Git.
+マスクや補助メタ情報は別管理とし、Git には含めません。
 
-### 2. Preprocess rtMRI + audio
+### 2. rtMRI + 音声の前処理
 
-From the `mri2speech_code` repo:
+`mri2speech_code` から以下を実行します:
 
 ```powershell
 python preprocess_rtmri_data.py `
@@ -102,21 +95,21 @@ python scripts/create_rtmri_filelists.py `
   --valid-ratio 0.1 --seed 42
 ```
 
-Artifacts (mel/db npy, `scaler.json`, filelists, …) are required for every later step.
+ここで生成される `samples/`, `pairs_ref4/`, `scaler.json`, filelists は以降すべてで使用します。
 
-### 3. Train the CNN-BiLSTM acoustic model
+### 3. CNN-BiLSTM 音響モデルの学習
 
 ```
 python train_mri_acoustic_model.py \
   --processed_dir dataset/rtmri_normalized_processed \
   --out_ckpt checkpoints/mri_acoustic_model.pt \
   --epochs 4500 --batch_size 8 --cnn_pretrained --use_checkpoint --ckpt_segments 2 \
-  ... (see docs/thesis_model_settings.md for the complete hyper-parameter set)
+  ...（詳細ハイパーパラメータは docs/thesis_model_settings.md を参照）
 ```
 
-The loss (`MaskedMSEMAE`) weights F0/F1/F2 bands and adds Δ / Δ² penalties as described in `docs/thesis_model_settings.md`.
+損失関数 `MaskedMSEMAE` は F0/F1/F2 の帯域重みと Δ/Δ² のペナルティを含みます。
 
-### 4. Export predicted mels and fine-tune HiFi-GAN
+### 4. メル書き出しと HiFi-GAN 微調整
 
 ```powershell
 python scripts/export_predicted_mels.py `
@@ -139,7 +132,9 @@ python train.py ^
   --fine_tuning 1
 ```
 
-### 5. Run inference (video → speech)
+Ground-truth メルと予測メルを混合しながら学習し、チェックポイントは `checkpoints/jvs_11413_2048_ft_mri_mix_gt08/` 以下に保存されます。
+
+### 5. 推論（動画 → 音声）
 
 ```powershell
 python scripts/run_mri_video_inference.py `
@@ -152,26 +147,23 @@ python scripts/run_mri_video_inference.py `
   --mri-code-dir <path-to-mri2speech_code>
 ```
 
-Outputs: waveform (`*_generated.wav`), linear/log mels (`*.npy`), and PNG previews.
+`*_generated.wav`, `*_mel_pred.npy`, 可視化用 PNG などが `output/mri_infer/<ID>/` に出力されます。
 
-### 6. Apply articulator masks
+### 6. 調音器官マスキング実験
 
-`scripts/mask_rtmri_video.py` darkens a polygonal region before inference.
+`scripts/mask_rtmri_video.py` で一部領域を暗くして影響を評価します。
 
 ```
 python scripts/mask_rtmri_video.py \
   --input normalized_videos/000.mp4 \
   --output temp/000_lip_alpha030.mp4 \
   --mask-type lip \
-  --alpha 0.3      # residual intensity (0.0=hidden, 1.0=no mask)
+  --alpha 0.3      # 0.0=完全マスク, 1.0=マスク無効
 ```
 
-- `--mask-type lip` uses a rectangular ROI around the lips.
-- `--mask-type tongue` uses a 5-point polygon covering tongue dorsum + pharynx.
-- Change `alpha` per experiment (e.g., 0.1 to 0.9).  
-  Afterwards run `run_mri_video_inference.py` on the masked video.
+`lip`/`tongue`/`custom` から選択し、生成された動画をそのまま推論スクリプトへ投入します。
 
-### 7. Grad-CAM for F1 / F2
+### 7. Grad-CAM（F1/F2 帯域の解釈）
 
 ```
 python scripts/mri_gradcam_formant.py \
@@ -184,15 +176,15 @@ python scripts/mri_gradcam_formant.py \
   --mri-code-dir <path-to-mri2speech_code>
 ```
 
-The script denormalizes mel predictions, converts them to linear power, sums the power inside each band, and backpropagates it to EfficientNet feature maps. Resulting heatmaps are saved as numpy arrays and overlays.
+得られたヒートマップは NumPy/PNG 形式で保存され、`scripts/create_gradcam_overlay_video.py` を使うと音声付きの説明動画を作れます。
 
 ---
 
-## Documentation & Tips
+## ドキュメントと運用メモ
 
-- `docs/rtmri_pipeline_notes.md` … chronological runbook with concrete Windows/PowerShell commands.
-- `docs/thesis_model_settings.md` … reference of all knobs used in the thesis (loss weights, Grad-CAM settings, etc.).
-- Store raw data/checkpoints outside the repo. Use `.gitignore` to keep `dataset/*` and `checkpoints/*` private if needed.
-- When publishing to GitHub, remove private paths from scripts or replace them with CLI flags (already supported by `--mri-code-dir` and path arguments above).
+- `docs/rtmri_pipeline_notes.md` … Windows/PowerShell 前提の詳細手順。
+- `docs/thesis_model_settings.md` … 卒論で参照したハイパーパラメータ・損失設定・可視化条件。
+- 生データ (`dataset/*`, `checkpoints/*`, `output/*`) は Git 管理外に置くことを推奨。`.gitignore` で除外済みです。
+- 実験結果を共有する際は、パスをハードコーディングせず CLI 引数で指定できる形を保ってください（全スクリプトで `--mri-code-dir` やパス引数に対応済み）。
 
-With these instructions and the packaged scripts, anyone in the lab can rebuild the full pipeline—from preprocessing through Grad-CAM visualization—after cloning the repository. Feel free to open issues or PRs to document additional datasets or masking patterns.
+この README と各ドキュメントに沿えば、研究室メンバーはクローン直後から同じパイプラインを再現可能です。追加の工夫やデータセットがあれば issues / PR / 口頭で共有してください。
