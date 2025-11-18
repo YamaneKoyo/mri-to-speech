@@ -1,6 +1,6 @@
 # MRI-to-Audio HiFi-GAN Research Pipeline
 
-This repository hosts the scripts we used in the laboratory project *“rtMRI を用ぁE��日本語母音音声合�Eと調音器官�E析 E.  
+This repository hosts the scripts we used in the laboratory project *“rtMRI を用いた日本語母音音声合成と調音器官解析”*.  
 It extends the original HiFi-GAN implementation with:
 
 - A CNN-BiLSTM acoustic model that predicts mel features directly from rtMRI videos (`mri2speech_code`).
@@ -17,17 +17,17 @@ Only scripts and configs are versioned; you must supply your own data that match
 ```
 .
 ├─ docs/
-━E  ├─ rtmri_pipeline_notes.md        # step-by-step runbook
-━E  └─ thesis_model_settings.md       # hyper-parameter reference
+│  ├─ rtmri_pipeline_notes.md        # step-by-step runbook
+│  └─ thesis_model_settings.md       # hyper-parameter reference
 ├─ scripts/
-━E  ├─ mask_rtmri_video.py            # lip / tongue masking helper
-━E  ├─ run_mri_video_inference.py     # rtMRI ↁEmel ↁEHiFi-GAN audio
-━E  ├─ export_predicted_mels.py       # dumps mel features for HiFi-GAN fine-tuning
-━E  └─ mri_gradcam_formant.py         # Grad-CAM visualizer for F1/F2 bands
-├─ checkpoints/                       # place acoustic + HiFi-GAN checkpoints here
-├─ dataset/                           # preprocessed npy, scaler.json, filelists, etc.
-├─ requirements.txt                   # legacy HiFi-GAN deps
-└─ requirements.lab.txt               # current lab environment (PyTorch 2.7, OpenCV, timm, ...)
+│  ├─ mask_rtmri_video.py            # lip / tongue masking helper
+│  ├─ run_mri_video_inference.py     # rtMRI → mel → HiFi-GAN audio
+│  ├─ export_predicted_mels.py       # dumps mel features for HiFi-GAN fine-tuning
+│  └─ mri_gradcam_formant.py         # Grad-CAM visualizer for F1/F2 bands
+├─ checkpoints/                      # place acoustic + HiFi-GAN checkpoints here
+├─ dataset/                          # preprocessed npy, scaler.json, filelists, etc.
+├─ requirements.txt                  # legacy HiFi-GAN deps
+└─ requirements.lab.txt              # current lab environment (PyTorch 2.7, OpenCV, timm, ...)
 ```
 
 The acoustic model code (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) lives in a **separate** repository (`mri2speech_code`).  
@@ -47,8 +47,8 @@ Keep it as a sibling folder or pass `--mri-code-dir` whenever a script needs it.
 
    Tested versions:
 
-   | Package           | Version  |
-   |-------------------|----------|
+   | Package           | Version   |
+   |-------------------|-----------|
    | torch             | 2.7.0+cpu |
    | torchvision       | 0.22.0+cpu |
    | torchaudio        | 2.7.0+cpu |
@@ -114,7 +114,7 @@ python train_mri_acoustic_model.py \
   ... (see docs/thesis_model_settings.md for the complete hyper-parameter set)
 ```
 
-The loss (`MaskedMSEMAE`) weights F0/F1/F2 bands and adds ΁EΔ΁Epenalties as described in `docs/thesis_model_settings.md`.
+The loss (`MaskedMSEMAE`) weights F0/F1/F2 bands and adds Δ / Δ² penalties as described in `docs/thesis_model_settings.md`.
 
 ### 4. Export predicted mels and fine-tune HiFi-GAN
 
@@ -139,7 +139,7 @@ python train.py ^
   --fine_tuning 1
 ```
 
-### 5. Run inference (video ↁEspeech)
+### 5. Run inference (video → speech)
 
 ```powershell
 python scripts/run_mri_video_inference.py `
@@ -190,10 +190,9 @@ The script denormalizes mel predictions, converts them to linear power, sums the
 
 ## Documentation & Tips
 
-- `docs/rtmri_pipeline_notes.md`  Echronological runbook with concrete Windows/PowerShell commands.
-- `docs/thesis_model_settings.md`  Ereference of all knobs used in the thesis (loss weights, Grad-CAM settings, etc.).
+- `docs/rtmri_pipeline_notes.md` … chronological runbook with concrete Windows/PowerShell commands.
+- `docs/thesis_model_settings.md` … reference of all knobs used in the thesis (loss weights, Grad-CAM settings, etc.).
 - Store raw data/checkpoints outside the repo. Use `.gitignore` to keep `dataset/*` and `checkpoints/*` private if needed.
 - When publishing to GitHub, remove private paths from scripts or replace them with CLI flags (already supported by `--mri-code-dir` and path arguments above).
 
-With these instructions and the packaged scripts, anyone in the lab can rebuild the full pipeline—from preprocessing through Grad-CAM visualization—after cloning the repository. Feel free to open issues or PRs to document additional datasets or masking patterns.***
-
+With these instructions and the packaged scripts, anyone in the lab can rebuild the full pipeline—from preprocessing through Grad-CAM visualization—after cloning the repository. Feel free to open issues or PRs to document additional datasets or masking patterns.

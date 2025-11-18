@@ -1,12 +1,13 @@
-# 卒論向けモチE��設定メモ
+# 卒論向けモデル設定メモ
 
-本ドキュメントでは、本研究で用ぁE��吁E��ジュール�E�ENN-LSTM、HiFi-GAN、Grad-CAM 可視化�E��E詳細設定をまとめる。前処琁E�EチE�Eタ刁E��・モチE��構造・損失関数・学習ハイパ�Eパラメータ・可視化手頁E��ど、卒業論文記述時に参�Eすることを想定してぁE��、E
+本ドキュメントは、研究テーマ「rtMRI を用いた日本語母音音声合成と調音器官解析」で使用した主要モジュール（CNN-LSTM 音響モデル / HiFi-GAN / Grad-CAM 可視化）の設定をまとめた備忘録です。前処理の共通ルールから学習ハイパーパラメータ、可視化ツールの使い方までを網羅しているため、卒論執筆時の参照資料として利用してください。
+
 ---
 
-## 1. チE�Eタ前�E琁E���E通設定！E
+## 1. データ前処理の共通設定
 - **動画正規化**
-  - 允E��画は 256ÁE56 のグレースケールに変換し、フレームごとに平坁E0 / 標準偏差 1 正規化後、E、E にスケーリング、E  - 褁E��動画を扱ぁE��合�E `preprocess_rtmri_data.py` を使用して一括処琁E��E 
-    侁E  
+  - すべての動画を 256×256 のグレースケールへ変換し、フレーム単位で平均 0 / 標準偏差 1 に正規化後、[0, 1] に再スケーリング。
+  - まとまったデータを処理する際は `preprocess_rtmri_data.py` を使用する。
     ```powershell
     python preprocess_rtmri_data.py `
       --data_dir <video_root> `
@@ -15,31 +16,60 @@
       --sr 11413 --n_mels 64 --n_fft 2048 --hop_length 420 `
       --win_length 2048 --preemph 0.97 --ref_frames 4
     ```
-- **音声処琁E*
-  - サンプリングレーチE11,413 Hz にリサンプリング、�Eリエンファシス係数 0.97、パワーメル (64 メル) を算�E征EdB 変換、E  - `scaler.json` にメルの全体平坁E標準偏差を保存し、CNN-LSTM 学習時に正規化・再標準化へ使用、E- **チE�EタセチE��構造**
-  - `dataset/rtmri_normalized_processed/samples/<ID>/{mri.npy, mel_db.npy, mask.npy}`  
-    `mask.npy` は現状 1 のみ�E�封E��皁E��口腔�Eスクを乗算予定）、E  - 4 フレーム参�Eの固定長ペアめE`pairs_ref4` (npz)、`pairs_ref4_npy` (mmap 用) に保存、E  - `scaler.json`、`meta.json`、`hifigan_filelists/{training,validation}.txt` を併せて生�E、E
+- **音声処理**
+  - サンプリングレート 11,413 Hz へ揃え、プリエンファシス 0.97、64 メルのパワーメルを計算後 dB 変換。
+  - `scaler.json` にメル全体の平均・標準偏差を保存し、CNN-LSTM 学習での正規化と逆変換に利用する。
+- **データセット構造**
+  - `dataset/rtmri_normalized_processed/samples/<ID>/{mri.npy, mel_db.npy, mask.npy}`
+    - `mask.npy` は現在オール 1。後日、口腔マスクを掛ける予定がある場合はここに保存。
+  - 参照フレーム数 4 の固定長ペアを `pairs_ref4` (npz) と `pairs_ref4_npy` (mmap 用) に格納。
+  - `scaler.json`、`meta.json`、`hifigan_filelists/{training,validation}.txt` を必ず同時に生成する。
+
 ---
 
-## 2. CNN-LSTM�E�メル生�E器�E�E
-- **モチE��構造**�E�Emri2speech_code/mri_acoustic_model.py`�E�E  - EfficientNetV2-B2�E�Eimm, `features_only=True`�E�で吁E��レームの特徴抽出、Ech MRI めE3ch に褁E��して入力、E  - Global Average Pooling ↁEBiLSTM�E�Eidden 640、双方向�E和）�E Dropout 0.5 ↁELinear (n_mels=64)、E- **学習スクリプト**: `mri2speech_code/train_mri_acoustic_model.py`
-  - DataLoader: `FixedLenPairDataset` + `collate_pad`、E0/10/10 のランダム刁E�� (`torch.utils.data.random_split`, seed=42)、E  - バッチE `batch_size=16`、`micro_batch_size=4`�E�勾配蓄積）、`num_workers=4`、`prefetch_factor=4`、`pin_memory=True`、E  - Optimizer: `AdamW` (lr=1e-4, betas=(0.9,0.999), eps=1e-8, weight_decay=1e-4)、E  - Scheduler: `ReduceLROnPlateau` (factor=0.5, patience=5, min_lr=1e-6)、E  - Mixed Precision: bf16 (GPU が対忁E / fp16、�E勁EGradScaler、E  - 勾配クリチE�E: `clip_grad_norm_=1.0`、E  - CNN 部刁E�E `torch.utils.checkpoint` を使用可能 (`--use_checkpoint --ckpt_segments 2`)、E- **損失関数 `MaskedMSEMAE` 改訂�E容**
+## 2. CNN-LSTM ベース メル生成器
+- **モデル構造** （`mri2speech_code/mri_acoustic_model.py`）
+  - EfficientNetV2-B2 (timm, `features_only=True`) で各フレームの特徴量を抽出。rtMRI の 4 フレームを 3ch×4 のテンソルに畳み、1 サンプルとして投入。
+  - Global Average Pooling → BiLSTM (Hidden 640, 双方向の和) → Dropout 0.5 → Linear (出力 64mel)。
+- **学習スクリプト**: `mri2speech_code/train_mri_acoustic_model.py`
+  - DataLoader: `FixedLenPairDataset` + `collate_pad`。データは 80/10/10% にランダム分割 (`torch.utils.data.random_split`, seed=42)。
+  - ハイパーパラメータ: `batch_size=16`、`micro_batch_size=4`（勾配蓄積）、`num_workers=4`、`prefetch_factor=4`、`pin_memory=True`。
+  - Optimizer: `AdamW` (lr=1e-4, betas=(0.9,0.999), eps=1e-8, weight_decay=1e-4)。
+  - Scheduler: `ReduceLROnPlateau` (factor=0.5, patience=5, min_lr=1e-6)。
+  - Mixed Precision: bf16（GPU が非対応のときは fp16 + GradScaler）。
+  - 勾配クリップ: `clip_grad_norm_=1.0`。
+  - CNN 部分には `torch.utils.checkpoint` を適用可能 (`--use_checkpoint --ckpt_segments 2`)。
+- **損失関数 `MaskedMSEMAE` の調整**
   - 周波数帯域ごとの重み:
-    - F0 (mel bin 0 E): 2.0
-    - F1 (6 E5): 3.0
-    - F2 (16 E1): 2.4
-    - F3 付迁E(32 E7): 1.6
-    - 高域 (上佁E16 bin): 1.8
-  - 時間方向�E重み: 先頭 8 フレームに 1.6 ↁE1.02 まで段階的に強調、E  - Ramp 設宁E `ramp_steps=120000`。�E期�Eベ�Eス重み、以降ターゲチE��重みに遷移、E  - 付加損失: ΁E(一次差刁E・Δ΁E(二次差刁E・最新フレーム MSE を加重。係数は ramp に応じて `delta_coeff=0.3ↁE.45`、`accel_coeff=0.1ↁE.15`、`latest_coeff=0.2ↁE.4`、E  - 損失冁E��バンド別 MAE を計測し、`band/train_*` / `band/val_*` として TensorBoard に記録、E- **学習設宁E*
-  - 目標エポック 4,500。`EarlyStopping` 皁E��挙動: val loss 改喁E�� 20 回連続で得られなぁE��また�E LR が最小学習率以下になると停止、E  - ログ: `checkpoints/mri_acoustic_model_retrain/logs`�E�EensorBoard�E�と stdout、E  - 最良モチE��は持E��Eckpt (`--out_ckpt`) に保存、E
+    - F0 (mel bin 0〜5): 2.0
+    - F1 (6〜15): 3.0
+    - F2 (16〜31): 2.4
+    - F3 付近 (32〜47): 1.6
+    - 高域 (48 以上): 1.8
+  - 時間方向の重み付け: 先頭 8 フレームは 1.6 から 1.02 まで逓減させて強調。
+  - Ramp 設定: `ramp_steps=120000`。序盤はベース重み、以降ターゲット重みに移行。
+  - 付加損失: Δ（一次差分）、Δ²（二次差分）、最新フレーム MSE を加重。係数は `delta_coeff=0.3→0.45`、`accel_coeff=0.1→0.15`、`latest_coeff=0.2→0.4`。
+  - TensorBoard にはバンド別 MAE を `band/train_*` / `band/val_*` として記録。
+- **学習運用**
+  - 目標エポック 4,500。`EarlyStopping`: Val loss が 20 回連続で改善しない、または学習率が最小学習率まで下がったら停止。
+  - ログ出力: `checkpoints/mri_acoustic_model_retrain/logs`（TensorBoard + stdout）。
+  - 最良モデルは `--out_ckpt` で指定したパスに保存。
+
 ---
 
-## 3. HiFi-GAN�E��Eコーダ�E�E
-- **初期値**: `checkpoints/jvs_11413_2048_scratch/g_00055000` をコピ�Eしてスタート、E- **設宁E* (`config_custom.json`)
-  - バッチサイズ 16、学習率 5e-5、Adam (β1=0.8, β2=0.99)、lr_decay=0.999、E  - Segment size 8400、メル設定�E CNN-LSTM と同一 (n_mels=64, hop=420)、E  - Upsampling rates [10,7,3,2]、ResBlock kernel [3,7,11]、dilation [[1,3,5], …]、E- **チE�Eタ**
-  - 音声リスチE `dataset/rtmri_normalized_processed/hifigan_filelists/{training,validation}.txt`�E�Ereprocess 時に作�E、seed=42, valid 10%�E�、E  - メル入劁E
+## 3. HiFi-GAN ボコーダ
+- **初期値**: `checkpoints/jvs_11413_2048_scratch/g_00055000` をコピーしてファインチューニングを開始。
+- **主な設定** (`config_custom.json`)
+  - バッチサイズ 16、学習率 5e-5、Optimizer: Adam (β1=0.8, β2=0.99)、`lr_decay=0.999`。
+  - Segment size 8400、メル条件は CNN-LSTM と同一 (n_mels=64, hop=420)。
+  - Upsampling rates [10,7,3,2]、ResBlock kernel [3,7,11]、dilation [[1,3,5], …]。
+- **データ**
+  - 音声リストは `dataset/rtmri_normalized_processed/hifigan_filelists/{training,validation}.txt`。前処理スクリプトで生成 (seed=42, valid 10%)。
+  - メル入力:
     - CNN-LSTM 予測メル `mels_ft_log_normalized`
-    - ground-truth メル `mels_gt_log`�E�Escripts/export_groundtruth_mels.py` で `samples/<ID>/mel_db.npy` から生�E�E�E  - Fine-tuning 時�E `--extra_mels_dir mels_gt_log --extra_mels_weight 0.8` で 80% めEground-truth、E0% を予測メルからサンプリング、E- **実行侁E*
+    - Ground-truth メル `mels_gt_log`（`scripts/export_groundtruth_mels.py` で `samples/<ID>/mel_db.npy` から生成）
+  - Fine-tuning 時は `--extra_mels_dir mels_gt_log --extra_mels_weight 0.8` で Ground-truth 80%, 予測 20% を混合サンプリング。
+- **実行例**
   ```powershell
   C:\Users\Yamane\hifigan-env\Scripts\python.exe train.py ^
     --config config_custom.json ^
@@ -53,14 +83,18 @@
     --fine_tuning 1
   ```
 - **ログ/評価**
-  - TensorBoard: `checkpoints/jvs_11413_2048_ft_mri_mix_gt08/logs`
-  - チェチE��ポイント間の音質比輁E `scripts/run_mri_video_inference.py` を用ぁE��吁E`g_*.pt` で推論し、`output/mri_infer_mix_gt08/g_0006xxxx` などに保存、E
+  - TensorBoard: `checkpoints/jvs_11413_2048_ft_mri_mix_gt08/logs`。
+  - 各チェックポイントの音質比較は `scripts/run_mri_video_inference.py` を用いて `g_*.pt` から推論し、`output/mri_infer_mix_gt08/g_0006xxxx` などに保存する。
+
 ---
 
 ## 4. Grad-CAM 可視化
 
-- **基本チE�Eル**: `scripts/mri_gradcam_formant.py`
-  - EfficientNet バックボ�Eンの最終特徴マップを取得し、フォルマント帯埁E(侁E F1=300-900 Hz, F2=900-2500 Hz) のエネルギーをターゲチE��として送E��播、E  - GPU 利用 (`--device cuda`) が可能、EuDNN RNN 送E��播の制紁E��対応するため、推論モードでも一時的に LSTM めEtrain 状態に刁E��替えてぁE��、E  - 出劁E `gradcam_<band>_sequence.npy` (TÁE56ÁE56)、`gradcam_<band>_average.png`、指定フレームのオーバ�Eレイ PNG、E  - 実行侁E
+- **基本ツール**: `scripts/mri_gradcam_formant.py`
+  - EfficientNet の最終特徴マップを取得し、フォルマント帯域（例: F1=300-900 Hz, F2=900-2500 Hz）のエネルギーをターゲットに逆伝播。
+  - GPU がある場合は `--device cuda` を指定。cuDNN RNN 逆伝播の制約に合わせ、推論モード中に LSTM を一時的に train 状態へ切替。
+  - 出力: `gradcam_<band>_sequence.npy` (T×256×256)、`gradcam_<band>_average.png`、指定フレームのオーバーレイ PNG。
+  - 実行例:
     ```powershell
     python scripts/mri_gradcam_formant.py `
       --video normalized_videos/000.mp4 `
@@ -70,8 +104,10 @@
       --formant-band F1:300-900 --formant-band F2:900-2500 `
       --target-frames 60 90 120 --device cuda
     ```
-- **区間抽出・スロー再生**
-  - NumPy で任意区閁E(侁E 0.8、E.2 s) を抽出ぁE`gradcam_F*_aSegment_sequence.npy` として保存、E  - `scripts/create_gradcam_video.py` でヒ�Eト�EチE�Eのみのスロー動画を生成、E    ```powershell
+- **区間抽出 / スロー再生**
+  - NumPy で任意区間 (例: 0.8〜1.2 s) を抽出し `gradcam_F*_aSegment_sequence.npy` として保存。
+  - `scripts/create_gradcam_video.py` でヒートマップのみのスロー動画を生成。
+    ```powershell
     python scripts/create_gradcam_video.py `
       --video normalized_videos/000.mp4 `
       --sequence output/gradcam_formant/000_mix_gt08_60k/gradcam_F1_sequence.npy `
@@ -79,8 +115,9 @@
       --output output/gradcam_formant/F1_slow.mp4 `
       --fps 5 --repeat 4 --alpha 0.7
     ```
-- **映像＋音声オーバ�Eレイ**
-  - `scripts/create_gradcam_overlay_video.py` で允E��画�E�生成音声�E�Eoutput/mri_infer_latest_ft/000_generated.wav` 等）を結合し、F1/F2 のヒ�Eト�EチE�Eを重畳、E    ```powershell
+- **映像＋音声オーバーレイ**
+  - `scripts/create_gradcam_overlay_video.py` で元動画と生成音声（例: `output/mri_infer_latest_ft/000_generated.wav`）を組み合わせ、F1/F2 のヒートマップを重畳。
+    ```powershell
     python scripts/create_gradcam_overlay_video.py `
       --video normalized_videos/000.mp4 `
       --heatmap output/gradcam_formant/000_mix_gt08_60k/gradcam_F1_sequence.npy `
@@ -89,9 +126,11 @@
       --output output/gradcam_formant/000_overlay.mp4 `
       --alpha 0.7 --resize 256 256
     ```
-  - `--heatmap2` を省略すれば単一帯域�Eみの可視化となる、E
+  - `--heatmap2` を省略すれば単一帯域のみの可視化となる。
+
 ---
 
 ## 5. メモ
 
-- 新たなチE�EタセチE��を用ぁE��場合も、上記�E前�E琁EↁECNN-LSTM 再学翁EↁEHiFi-GAN 微調整 ↁEGrad-CAM 可視化の頁E��手頁E��踏めば、既存環墁E��流用して再現できる、E- 本ドキュメント�E `docs/thesis_model_settings.md` として保存してぁE��ため、論文執筁E��にはこ�Eファイルを参照しながら設定値を記述すること、E
+- 新しいデータセットを使う場合も、上記の「前処理 → CNN-LSTM 再学習 → HiFi-GAN 微調整 → Grad-CAM 可視化」を踏めば既存環境を流用して再現できる。
+- 本メモは `docs/thesis_model_settings.md` として追跡しているため、論文執筆時はこのファイルを参照しながら設定値を記述すること。

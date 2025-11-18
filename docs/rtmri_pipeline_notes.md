@@ -1,53 +1,52 @@
-# rtMRI ƒx[ƒX‰¹º‡¬ƒ[ƒNƒtƒ[ˆø‚«Œp‚¬ƒƒ‚
+# rtMRI ãƒ™ãƒ¼ã‚¹ç ”ç©¶ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ä½œæ¥­ãƒ¡ãƒ¢
 
-2025 ”N 10 Œ“_‚Ì `C:\Users\Yamane\hifi-gan` ŠÂ‹«‚ÅArtMRI “®‰æ‚©‚ç‰¹º‚ğ¶¬‚·‚éÛ‚Ìì‹Æè‡‚ÆˆË‘¶ŠÖŒW‚Ì®—ƒƒ‚‚Å‚·BCNN-LSTMiƒƒ‹¶¬Šíj‚Æ HiFi-GANiƒ{ƒR[ƒ_j‚Ì—¼•û‚ğXV‚·‚é‰^—p‚ğ‘O’ñ‚Æ‚µ‚Ä‚¢‚Ü‚·B
+2025 å¹´ 10 æœˆæ™‚ç‚¹ã§ `C:\Users\Yamane\hifi-gan` ã«æ§‹ç¯‰ã—ãŸ rtMRI ã‹ã‚‰ã®éŸ³å£°å†åˆæˆç’°å¢ƒã®å®Ÿè¡Œæ‰‹é †ã‚’ã¾ã¨ã‚ãŸãƒãƒ¼ãƒˆã§ã™ã€‚CNN-LSTMï¼ˆrtMRI â†’ ãƒ¡ãƒ«ï¼‰ã¨ HiFi-GANï¼ˆãƒ¡ãƒ« â†’ æ³¢å½¢ï¼‰ã®æ›´æ–°ã€Grad-CAM å¯è¦–åŒ–ã¾ã§ã®ä¸€é€£ã®æµã‚Œã‚’ PowerShell ã‚³ãƒãƒ³ãƒ‰ã¨ã¨ã‚‚ã«è¨˜éŒ²ã—ã¦ã„ã¾ã™ã€‚
 
 ---
 
-## 1. ƒf[ƒ^‘Oˆ—
-### 1.1 ³‹K‰»“®‰æ + ‰¹º‚©‚çƒTƒ“ƒvƒ‹¶¬
+## 1. ãƒ‡ãƒ¼ã‚¿ã®æº–å‚™
+### 1.1 ç’°å¢ƒã‚¢ã‚¯ãƒ†ã‚£ãƒ™ãƒ¼ãƒˆ + å‰å‡¦ç†ã‚¹ã‚¯ãƒªãƒ—ãƒˆ
 
 ```powershell
-# •K—v‚É‰‚¶‚Ä‰¼‘zŠÂ‹«‚ğ—LŒø‰»
+# äº‹å‰ã«ä½œæˆã—ãŸä»®æƒ³ç’°å¢ƒã‚’èµ·å‹•
 C:\Users\Yamane\hifigan-env\Scripts\activate
 
-cd C:\Users\Yamane\Desktop\RªŒ¤‹†—p\mri2speech_code
+cd C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\mri2speech_code
 
-# ³‹K‰»“®‰æ + ‰¹º‚©‚çƒTƒ“ƒvƒ‹ì¬iŠù‘¶ wav ‚ğ—˜—pj
+# rtMRI å‹•ç”» + éŸ³å£°ã®å‰å‡¦ç†ï¼ˆwav ã‚‚ç”Ÿæˆï¼‰
 python preprocess_rtmri_data.py `
-  --data_dir   C:\Users\Yamane\Desktop\RªŒ¤‹†—p\normalized_videos `
-  --audio_dir  C:\Users\Yamane\Desktop\RªŒ¤‹†—p\audio_wav `
+  --data_dir   C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\normalized_videos `
+  --audio_dir  C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\audio_wav `
   --out_dir    C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed `
   --sr 11413 --n_mels 64 --n_fft 2048 --hop_length 420 --ref_frames 4
 
-# pairs_ref4 ‚ğ npy ‚É•ÏŠ·iPyTorch Dataset ‚Å mmap —˜—pj
+# pairs_ref4 ã‚’ npyï¼ˆmmap ç”¨ï¼‰ã«å¤‰æ›
 cd C:\Users\Yamane\hifi-gan
 python scripts/convert_pairs_to_npy.py `
   --processed_dir C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed `
   --ref_frames 4 --overwrite
 
-# HiFi-GAN —p‚Ì wav ƒŠƒXƒg¶¬
+# HiFi-GAN ç”¨ã® wav ãƒªã‚¹ãƒˆä½œæˆ
 python scripts/create_rtmri_filelists.py `
-  C:\Users\Yamane\Desktop\RªŒ¤‹†—p\audio_wav `
+  C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\audio_wav `
   C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed\hifigan_filelists `
   --valid-ratio 0.1 --seed 42
 ```
 
-¶¬‚³‚ê‚éå‚Èƒtƒ@ƒCƒ‹EƒtƒHƒ‹ƒ_:
+ç”Ÿæˆã•ã‚Œã‚‹ä¸»ãªãƒ•ã‚¡ã‚¤ãƒ«/ãƒ•ã‚©ãƒ«ãƒ€:
 
 - `dataset/rtmri_normalized_processed/samples/<ID>/{mri.npy, mel_db.npy, mask.npy}`
 - `dataset/rtmri_normalized_processed/pairs_ref4(_npy)/...`
 - `dataset/rtmri_normalized_processed/hifigan_filelists/{training,validation}.txt`
-- `dataset/rtmri_normalized_processed/scaler.json`
-- `dataset/rtmri_normalized_processed/meta.json`
+- `dataset/rtmri_normalized_processed/{scaler.json, meta.json}`
 
 ---
 
-## 2. CNN-LSTMiƒƒ‹¶¬Šíj‚ÌŠwK
-### 2.1 ŠwKƒRƒ}ƒ“ƒh
+## 2. CNN-LSTMï¼ˆrtMRI â†’ ãƒ¡ãƒ«ï¼‰ å­¦ç¿’
+### 2.1 å®Ÿè¡Œã‚³ãƒãƒ³ãƒ‰
 
 ```powershell
-C:\Users\Yamane\hifigan-env\Scripts\python.exe "C:\Users\Yamane\Desktop\RªŒ¤‹†—p\mri2speech_code\train_mri_acoustic_model.py" `
+C:\Users\Yamane\hifigan-env\Scripts\python.exe "C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\mri2speech_code\train_mri_acoustic_model.py" `
   --processed_dir "C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed" `
   --out_ckpt "C:\Users\Yamane\hifi-gan\checkpoints\mri_acoustic_model.pt" `
   --resume_ckpt "C:\Users\Yamane\hifi-gan\checkpoints\mri_acoustic_model.pt" `
@@ -58,120 +57,118 @@ C:\Users\Yamane\hifigan-env\Scripts\python.exe "C:\Users\Yamane\Desktop\RªŒ¤‹†
   --micro_batch_size 2 `
   --num_workers 4 `
   --prefetch_factor 4 `
-  --cnn_pretrained `
-  --use_checkpoint `
-  --ckpt_segments 2
+  --pin_memory `
+  --cnn_pretrained --use_checkpoint --ckpt_segments 2
 ```
 
-### 2.2 ‘¹¸ŠÖ”‚Ì—v“_
-- `train_mri_acoustic_model.py` “à‚Ì `MaskedMSEMAE` ‚ğQÆBü”g”^ŠÔ•ûŒü‚Ìd‚İ•t‚¯‚ğ `ramp_steps` ‚Å’iŠK“I‚É‹­‰»
-- ƒ¢iˆêŸ·•ªj‚¨‚æ‚ÑÅVƒtƒŒ[ƒ€‚Ì•â• MSE ‚ğ•¹—pBŒW”’²®Œã‚àƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg‚©‚çÄŠJ‰Â”\
-- `ReduceLROnPlateau` ‚ÅŠwK—¦‚ª‰º‚ª‚èØ‚Á‚½ê‡‚Í‘Ñˆæd‚İ‚â•â•‘¹¸ŒW”‚Ì’²®‚ğŒŸ“¢
+### 2.2 ãƒã‚§ãƒƒã‚¯ãƒã‚¤ãƒ³ãƒˆé‹ç”¨
+- `checkpoints/mri_acoustic_model.pt` ã«æœ€æ–°/æœ€è‰¯ãƒ¢ãƒ‡ãƒ«ã‚’ä¸Šæ›¸ãä¿å­˜ã€‚
+- ãƒ­ã‚°ã¯ `checkpoints/mri_acoustic_model_logs` ã« TensorBoard å½¢å¼ã§å‡ºåŠ›ã€‚`tensorboard --logdir <path>` ã§ç¢ºèªã€‚
+- é€”ä¸­ã§å†é–‹ã™ã‚‹å ´åˆã¯ `--resume_ckpt` ã‚’åŒã˜ãƒ‘ã‚¹ã«å‘ã‘ã‚‹ã€‚
 
-### 2.3 TensorBoard ‚ÌŠm”F
-
-```powershell
-C:\Users\Yamane\hifigan-env\Scripts\activate
-tensorboard --logdir "C:\Users\Yamane\hifi-gan\checkpoints\mri_acoustic_model_logs" --port 6007 --host 0.0.0.0
-```
+### 2.3 ç²¾åº¦ãƒã‚§ãƒƒã‚¯
+- `scripts/run_mri_video_inference.py` ã‚’ä½¿ã„ã€æ•°æœ¬ã®å‹•ç”»ã§ãƒ¡ãƒ« + æ³¢å½¢ã‚’ç”Ÿæˆã€‚
+- `output/mri_infer_latest_ft/<ID>/` ã« `*_mel_pred.npy`ã€`*_generated.wav` ãªã©ãŒå‡ºåŠ›ã•ã‚Œã‚‹ãŸã‚ã€GT ã¨æ¯”è¼ƒã—ãªãŒã‚‰è©•ä¾¡ã€‚
 
 ---
 
-## 3. HiFi-GAN ‚Ìƒtƒ@ƒCƒ“ƒ`ƒ…[ƒjƒ“ƒO
-### 3.1 CNN-LSTM o—Íƒƒ‹‚ÌˆêŠ‡¶¬
+## 3. ãƒ¡ãƒ«ã®æ›¸ãå‡ºã—
+
+CNN-LSTM å­¦ç¿’å¾Œã«ä¸‹è¨˜ã‚’å®Ÿè¡Œã—ã€HiFi-GAN ã®æ¡ä»¶ä»˜ã‘ã«ä½¿ã†ãƒ¡ãƒ«ã‚’ä¿å­˜ã™ã‚‹ã€‚
 
 ```powershell
-cd C:\Users\Yamane\hifi-gan
 python scripts/export_predicted_mels.py `
-  --processed_dir C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed `
-  --mri_checkpoint C:\Users\Yamane\hifi-gan\checkpoints\mri_acoustic_model.pt `
-  --scaler_json C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed\scaler.json `
-  --output_dir C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed\mels_ft_log_normalized `
-  --mri_code_dir C:\Users\Yamane\Desktop\RªŒ¤‹†—p\mri2speech_code `
+  --processed_dir dataset/rtmri_normalized_processed `
+  --mri_checkpoint checkpoints/mri_acoustic_model.pt `
+  --scaler_json dataset/rtmri_normalized_processed/scaler.json `
+  --output_dir dataset/rtmri_normalized_processed/mels_ft_log_normalized `
+  --mri_code_dir C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\mri2speech_code `
+  --overwrite
+
+python scripts/export_groundtruth_mels.py `
+  --processed_dir dataset/rtmri_normalized_processed `
+  --output_dir dataset/rtmri_normalized_processed/mels_gt_log `
   --overwrite
 ```
 
-### 3.2 HiFi-GAN ÄŠwKƒRƒ}ƒ“ƒh
+- çµæœãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã« `*_mel_pred_log_norm.npy`ã€`*_mel_gt_log.npy` ãŒç”Ÿæˆã•ã‚Œã‚‹ã€‚HiFi-GAN ã® `--input_mels_dir` / `--extra_mels_dir` ã«æŒ‡å®šã€‚
+
+---
+
+## 4. HiFi-GAN ãƒ•ã‚¡ã‚¤ãƒ³ãƒãƒ¥ãƒ¼ãƒ‹ãƒ³ã‚°
+### 4.1 å­¦ç¿’ã‚³ãƒãƒ³ãƒ‰
 
 ```powershell
 C:\Users\Yamane\hifigan-env\Scripts\python.exe train.py ^
   --config config_custom.json ^
-  --input_wavs_dir "C:\Users\Yamane\Desktop\RªŒ¤‹†—p\audio_wav" ^
+  --input_wavs_dir "C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\audio_wav" ^
   --input_training_file "dataset\rtmri_normalized_processed\hifigan_filelists\training.txt" ^
   --input_validation_file "dataset\rtmri_normalized_processed\hifigan_filelists\validation.txt" ^
-  --input_mels_dir "C:\Users\Yamane\hifi-gan\dataset\rtmri_normalized_processed\mels_ft_log_normalized" ^
-  --checkpoint_path "checkpoints\jvs_11413_2048_ft_mri" ^
-  --fine_tuning 1 ^
-  --training_epochs 10000
+  --input_mels_dir "dataset\rtmri_normalized_processed\mels_ft_log_normalized" ^
+  --extra_mels_dir "dataset\rtmri_normalized_processed\mels_gt_log" ^
+  --extra_mels_weight 0.8 ^
+  --checkpoint_path "checkpoints\jvs_11413_2048_ft_mri_mix_gt08" ^
+  --fine_tuning 1
 ```
 
-TensorBoard ƒƒO‚Í `checkpoints\jvs_11413_2048_ft_mri\logs` ‚Éo—ÍBƒ|[ƒgÕ“Ë‚Í `tensorboard --logdir ... --port 6006` ‚È‚Ç‚Å’²®B
+- å­¦ç¿’é€”ä¸­ã§ `Ctrl+C` ã—ã¦ã‚‚ãƒã‚§ãƒƒã‚¯ãƒã‚¤ãƒ³ãƒˆ (`g_*.pt`, `do_*.pt`) ã¯ `checkpoint_path` ä»¥ä¸‹ã«ä¿å­˜ã•ã‚Œã‚‹ã€‚
+- TensorBoard: `checkpoints/jvs_11413_2048_ft_mri_mix_gt08/logs`ã€‚
 
----
-
-## 4. „˜_
-
-ÅI“I‚É CNN-LSTM (`mri_acoustic_model.pt`) ‚Æ HiFi-GAN (`jvs_11413_2048_ft_mri\g_xxxxxx`) ‚ğ‘g‚İ‡‚í‚¹‚Ä‰¹º‚ğ¶¬‚µ‚Ü‚·B
+### 4.2 æ¨è«–æ¯”è¼ƒ
 
 ```powershell
-cd C:\Users\Yamane\hifi-gan
-
-python scripts/run_mri_video_inference.py ^
-  --video "C:\Users\Yamane\Desktop\RªŒ¤‹†—p\normalized_videos\000.mp4" ^
-  --mri-checkpoint "checkpoints\mri_acoustic_model.pt" ^
-  --scaler-json "dataset\rtmri_normalized_processed\scaler.json" ^
-  --hifigan-config "checkpoints\jvs_11413_2048_ft_mri\config.json" ^
-  --hifigan-checkpoint "checkpoints\jvs_11413_2048_ft_mri\g_00330000" ^
-  --output-dir "output\mri_infer_latest_ft" ^
-  --mri-code-dir "C:\Users\Yamane\Desktop\RªŒ¤‹†—p\mri2speech_code"
+python scripts/run_mri_video_inference.py `
+  --video normalized_videos/000.mp4 `
+  --mri-checkpoint checkpoints/mri_acoustic_model.pt `
+  --scaler-json dataset/rtmri_normalized_processed/scaler.json `
+  --hifigan-config checkpoints/jvs_11413_2048_ft_mri_mix_gt08/config.json `
+  --hifigan-checkpoint checkpoints/jvs_11413_2048_ft_mri_mix_gt08/g_00065000 `
+  --output-dir output/mri_infer_mix_gt08 `
+  --mri-code-dir C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\mri2speech_code
 ```
 
-•¡”ƒtƒ@ƒCƒ‹‚ğˆ—‚·‚éê‡‚Íƒ‹[ƒv‚âƒoƒbƒ`ƒXƒNƒŠƒvƒg‚Å `--video` ˆø”‚ğØ‚è‘Ö‚¦‚éB¶¬‰¹ (`*_generated.wav`) ‚ÆŒ³‰¹ (`*_original.wav`) ‚ğ“¯ˆêƒfƒBƒŒƒNƒgƒŠ‚É•Û‘¶‚·‚é‚Æ”äŠr‚µ‚â‚·‚¢B
+- `output/mri_infer_mix_gt08/g_00065000/` ä»¥ä¸‹ã«ç”Ÿæˆç‰©ãŒã¾ã¨ã¾ã‚‹ã€‚
+- åŒã˜ ID ã‚’è¤‡æ•°ã® checkpoint ã§æ¨è«–ã—ã€è´æ„Ÿè©•ä¾¡ã‚’å®Ÿæ–½ã€‚
 
 ---
 
-## 5. å‚ÈƒfƒBƒŒƒNƒgƒŠ‚Æƒ‚ƒWƒ…[ƒ‹
+## 5. ãƒã‚¹ã‚­ãƒ³ã‚°å®Ÿé¨“
 
-| ƒpƒX | —p“r |
-|------|------|
-| `checkpoints\mri_acoustic_model.pt` | ÅV CNN-LSTM (ƒƒ‹¶¬Ší) |
-| `checkpoints\mri_acoustic_model_logs` | CNN-LSTM ŠwKƒƒO (TensorBoard) |
-| `checkpoints\jvs_11413_2048_ft_mri\g_*.pt` | HiFi-GAN ƒtƒ@ƒCƒ“ƒ`ƒ…[ƒjƒ“ƒOÏ‚İd‚İ (ÅV‚Í g_00330000 ‚È‚Ç) |
-| `dataset\rtmri_normalized_processed\mels_ft_log_normalized` | HiFi-GAN ŠwK—pƒƒ‹ƒƒOƒpƒ[ |
-| `output\mri_infer_latest_ft` | ÅV„˜_Œ‹‰Ê (generated/original wav + ƒƒ‹‰æ‘œ) |
-| `logs\tensorboard` | ‰ß‹ƒWƒ‡ƒu‚Ì TensorBoard ƒƒOB•K—v‚É‰‚¶®— |
+`scripts/mask_rtmri_video.py` ã§å”‡ãƒ»èˆŒé ˜åŸŸã‚’æš—ãã—ã€å‹•ãã®å¯„ä¸ã‚’èª¿ã¹ã‚‹ã€‚
 
----
+```powershell
+python scripts/mask_rtmri_video.py `
+  --input normalized_videos/000.mp4 `
+  --output temp/000_lip_alpha030.mp4 `
+  --mask-type lip `
+  --alpha 0.3
+```
 
-## 6. ’ˆÓ–€
-- CNN-LSTM ‚Ì‘¹¸ŒW”‚Í’iŠK“I‚É‹­‰»‚³‚ê‚é‚½‚ßALoss ‚ªˆê“I‚Éã¸‚µ‚Ä‚àˆÀ’è‚·‚é‚Ü‚ÅŠÏ@‚·‚é
-- `ReduceLROnPlateau` ‚ÅŠwK—¦‚ª‰º‚ª‚è‘±‚¯‚éê‡‚ÍA‘ÑˆæƒEƒFƒCƒg‚â•â•‘¹¸ŒW”‚ğ’²®‚µ‚Ä‚©‚çÄŠJ
-- HiFi-GAN ‚Ì TensorBoard ‚Éo—Í‚³‚ê‚é audio ƒTƒ“ƒvƒ‹‚Í `audio_wav` ‚ÌŒ³ƒf[ƒ^‚ªŠî€BrtMRI —R—ˆ‰¹º‚Í„˜_ƒRƒ}ƒ“ƒh‚ÅŠm”F‚·‚é
-- ‘å—e—Êƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg (`jvs_11413_2048_*`) ‚ÍƒXƒgƒŒ[ƒW‚ğˆ³”—‚·‚é‚½‚ßA•s—v‚È¢‘ã‚Í‘Ş”ğE®—‚·‚é
+- `mask-type` ã¯ `lip` / `tongue` / `custom` ã‚’ç”¨æ„ã€‚`custom` ã®å ´åˆã¯ JSON ã§ãƒãƒªã‚´ãƒ³åº§æ¨™ã‚’æŒ‡å®šã€‚
+- å‡ºåŠ›å‹•ç”»ã‚’ãã®ã¾ã¾æ¨è«–ã‚¹ã‚¯ãƒªãƒ—ãƒˆã«æ¸¡ã—ã€ç”ŸæˆéŸ³å£°ã®åŠ£åŒ–é‡ã‚’æ¯”è¼ƒã€‚
 
 ---
 
-## 7. ƒ‚ƒfƒ‹\‘¢‚ÆƒR[ƒhˆË‘¶ŠÖŒW
-### 7.1 CNN-LSTM (ƒƒ‹¶¬Ší)
-- À‘•ƒtƒ@ƒCƒ‹: `C:\Users\Yamane\Desktop\RªŒ¤‹†—p\mri2speech_code\mri_acoustic_model.py`
-  - EfficientNetV2-B2 (timm) “Á’¥ƒ}ƒbƒv ¨ GlobalAvgPool ¨ BiLSTM (‘o•ûŒü˜a, hidden=640) ¨ Dropout(0.5) ¨ Linear(n_mels=64)
-- ŠwKƒXƒNƒŠƒvƒg: `train_mri_acoustic_model.py` (`dataset/*.py` ‚Æ˜AŒg)B`MaskedMSEMAE` ‚Æ ƒ¢ƒtƒŒ[ƒ€•â• MSE ‚ğg—p
-- „˜_ƒXƒNƒŠƒvƒg: `scripts/run_mri_video_inference.py` / `scripts/export_predicted_mels.py` ‚ª `build_mri_model()` ‚ğŒo—R‚µ‚Äƒ‚ƒfƒ‹‚ğƒ[ƒh‚µA`frames_to_tensor()` ‚Å“ü—Í®Œ`
+## 6. Grad-CAM å¯è¦–åŒ–
 
-### 7.2 HiFi-GAN (ƒ{ƒR[ƒ_)
-- À‘•ƒtƒ@ƒCƒ‹: ƒ‹[ƒg’¼‰º‚Ì `models.py`, `meldataset.py`, `env.py`, `utils.py`, `train.py`B\¬’l‚Í `config_custom.json`
-- ŠwKƒtƒ[: `scripts/export_predicted_mels.py` ‚Å¶¬‚µ‚½ `dataset\rtmri_normalized_processed\mels_ft_log_normalized` ‚ğ `train.py --fine_tuning 1` ‚Å“Ç‚İ‚İ
-- ƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg‰^—p: `checkpoints\jvs_11413_2048_scratch` ‚Ì `g_00055000` / `do_00055000` ‚ğŠî“_‚ÉƒRƒs[‚µA`checkpoints\jvs_11413_2048_ft_mri_YYYYMMDD` ‚ğì¬‚µ‚ÄÄŠwK
+```powershell
+python scripts/mri_gradcam_formant.py `
+  --video normalized_videos/000.mp4 `
+  --mri-checkpoint checkpoints/mri_acoustic_model.pt `
+  --scaler-json dataset/rtmri_normalized_processed/scaler.json `
+  --output-dir output/gradcam_formant/000 `
+  --formant-band F1:300-900 --formant-band F2:900-2500 `
+  --target-frames 60 90 120 `
+  --mri-code-dir C:\Users\Yamane\Desktop\å±±æ ¹ç ”ç©¶ç”¨\mri2speech_code
+```
 
-### 7.3 ƒf[ƒ^‘Oˆ—‚Æ•â•ƒXƒNƒŠƒvƒg
-- ‘Oˆ—: `mri2speech_code/preprocess_rtmri_data.py` ¨ `scripts/convert_pairs_to_npy.py` ¨ `scripts/create_rtmri_filelists.py`
-- ŠwKE„˜_: `scripts/export_predicted_mels.py` ¨ `train.py` ¨ `scripts/run_mri_video_inference.py` ‚Ì‡‚ÅˆË‘¶
-- ¬‰Ê•¨”z’u: `dataset/`, `checkpoints/`, `output/` ‚ÉŠi”[B‹Œƒ†[ƒeƒBƒŠƒeƒB‚Í `archive/legacy_scripts` ‚È‚Ç‚ÖˆÚ“®—\’è
+- å‡ºåŠ›: `gradcam_F*_sequence.npy`, `gradcam_F*_average.png`, `frame*_overlay.png`ã€‚
+- `scripts/create_gradcam_overlay_video.py` ã§ãƒ’ãƒ¼ãƒˆãƒãƒƒãƒ—ã¨ç”ŸæˆéŸ³å£°ã‚’ 1 æœ¬ã®å‹•ç”»ã«ã¾ã¨ã‚ã‚‹ã¨ç™ºè¡¨è³‡æ–™ã«ä½¿ã„ã‚„ã™ã„ã€‚
 
-### 7.4 Grad-CAM ‰Â‹‰»
-    - g—pƒRƒ}ƒ“ƒh—á:
-      `python scripts/mri_gradcam_formant.py --video normalized_videos/000.mp4 --mri-checkpoint checkpoints/mri_acoustic_model.pt --scaler-json dataset/rtmri_normalized_processed/scaler.json --output-dir output/gradcam_formant/000_mix_gt08_60k --formant-band F1:300-900 --formant-band F2:900-2500 --target-frames 60 90 120 --device cuda`
-    - o—Í: `gradcam_<band>_sequence.npy` (T~256~256), `gradcam_<band>_average.png`Aw’èƒtƒŒ[ƒ€‚ÌƒI[ƒo[ƒŒƒCPNG
-    - ‹æŠÔ’Šo: `gradcam_F*_first2s_sequence.npy`i0.8?1.2s ‚È‚Ç‘_‚¢‹æŠÔ‚ğ NumPy ‚ÅØ‚èo‚µj
-    - “®‰æ‰»: `python scripts/create_gradcam_video.py --video ... --sequence ... --start-frame ... --output ... --fps 5 --repeat 4 --alpha 0.7`
-    - Œ³‰f‘œ{‰¹º‡¬: `python scripts/create_gradcam_overlay_video.py --video ... --heatmap gradcam_F1_sequence.npy --heatmap2 gradcam_F2_sequence.npy --audio <generated.wav> --output ... --alpha 0.7 --resize 256 256`
+---
+
+## 7. è¿½åŠ ãƒ¡ãƒ¢
+
+- HiFi-GAN ã® TensorBoard ã«è¨˜éŒ²ã•ã‚Œã‚‹ audio ã‚µãƒ³ãƒ—ãƒ«ã¯ `audio_wav` ã®å…ƒãƒ‡ãƒ¼ã‚¿ã‚’å‚ç…§ã€‚rtMRI å´ã®å‹•ç”»ã¯åˆ¥ã‚³ãƒãƒ³ãƒ‰ã§ç¢ºèªã™ã‚‹ã€‚
+- å¤§ããªå®Ÿé¨“ã‚’å§‹ã‚ã‚‹å‰ã« `dataset/`, `checkpoints/`, `output/` ã‚’å¤–ä»˜ã‘ãƒ‰ãƒ©ã‚¤ãƒ–ã¸ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—ã™ã‚‹ã“ã¨ã€‚
+- ç ”ç©¶å®¤ãƒ¡ãƒ³ãƒãƒ¼ãŒç’°å¢ƒã‚’å†ç¾ã™ã‚‹å ´åˆã¯æœ¬ãƒãƒ¼ãƒˆã¨ `docs/thesis_model_settings.md` ã‚’å‚ç…§ã™ã‚Œã°ååˆ†ãªã¯ãšã€‚
