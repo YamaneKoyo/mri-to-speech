@@ -24,14 +24,14 @@
 └─ requirements.lab.txt              # 研究室現行環境（PyTorch 2.7, OpenCV など）
 ```
 
-rtMRI→mel の学習コード本体 (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) は別リポジトリ `mri2speech_code` にあります。隣接フォルダにクローンするか、各スクリプトへ `--mri-code-dir` を渡してください。
+rtMRI→mel の学習コード本体 (`mri_acoustic_model.py`, `train_mri_acoustic_model.py` …) は、このリポジトリ直下の `mri2speech_code/` ディレクトリに格納しています。スクリプトに `--mri-code-dir` を渡さない場合は `./mri2speech_code` が既定で読み込まれます。
 
 ---
 
 ## 環境構築
 
 1. Python 3.10 以上（研究室では **Python 3.13.3** で検証）。
-2. 本リポジトリをクローンし、必要なら `mri2speech_code` も同階層へ配置。
+2. 本リポジトリをクローン（`mri2speech_code/` も同梱済み）。別途改変したフォーク版を使う場合のみ、`--mri-code-dir` でパスを差し替えてください。
 3. 依存パッケージをインストール:
 
    ```bash
@@ -75,7 +75,7 @@ rtMRI→mel の学習コード本体 (`mri_acoustic_model.py`, `train_mri_acoust
 
 ### 2. rtMRI + 音声の前処理
 
-`mri2speech_code` から以下を実行します:
+リポジトリ直下の `mri2speech_code/` で以下を実行します:
 
 ```powershell
 python preprocess_rtmri_data.py `
@@ -117,7 +117,7 @@ python scripts/export_predicted_mels.py `
   --mri_checkpoint checkpoints/mri_acoustic_model.pt `
   --scaler_json dataset/rtmri_normalized_processed/scaler.json `
   --output_dir dataset/rtmri_normalized_processed/mels_ft_log_normalized `
-  --mri_code_dir <path-to-mri2speech_code> `
+  --mri_code_dir mri2speech_code `
   --overwrite
 
 python train.py ^
@@ -144,7 +144,7 @@ python scripts/run_mri_video_inference.py `
   --hifigan-config checkpoints/jvs_11413_2048_ft_mri_mix_gt08/config.json `
   --hifigan-checkpoint checkpoints/jvs_11413_2048_ft_mri_mix_gt08/g_00065000 `
   --output-dir output/mri_infer `
-  --mri-code-dir <path-to-mri2speech_code>
+  --mri-code-dir mri2speech_code
 ```
 
 `*_generated.wav`, `*_mel_pred.npy`, 可視化用 PNG などが `output/mri_infer/<ID>/` に出力されます。
@@ -173,7 +173,7 @@ python scripts/mri_gradcam_formant.py \
   --output-dir output/gradcam_formant/000 \
   --formant-band F1:300-900 --formant-band F2:900-2500 \
   --target-frames 60 90 120 \
-  --mri-code-dir <path-to-mri2speech_code>
+  --mri-code-dir mri2speech_code
 ```
 
 得られたヒートマップは NumPy/PNG 形式で保存され、`scripts/create_gradcam_overlay_video.py` を使うと音声付きの説明動画を作れます。
