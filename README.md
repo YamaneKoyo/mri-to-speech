@@ -185,5 +185,3 @@ python scripts/mri_gradcam_formant.py \
 - `docs/thesis_model_settings.md` … 卒論で参照したハイパーパラメータ・損失設定・可視化条件。
 - 生データ (`dataset/*`, `checkpoints/*`, `output/*`) は Git 管理外に置くことを推奨。`.gitignore` で除外済みです。
 - 実験結果を共有する際は、パスをハードコーディングせず CLI 引数で指定できる形を保ってください（全スクリプトで `--mri-code-dir` やパス引数に対応済み）。
-
-この README と各ドキュメントに沿えば、研究室メンバーはクローン直後から同じパイプラインを再現可能です。追加の工夫やデータセットがあれば issues / PR / 口頭で共有してください。
